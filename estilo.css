@@ -130,6 +130,7 @@ button:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; 
 .prov .barra { display: block; height: 6px; border-radius: 3px; background: #ffffff14; margin-top: 5px; overflow: hidden; }
 .prov .barra i { display: block; height: 100%; background: var(--verde); border-radius: 3px; }
 .tarjeta .vale { color: #5be3bf; font-weight: 700; }
+.tarjeta .precio { color: #fff; font-size: 17px; }
 .vacio { text-align: center; color: var(--suave); margin-top: 40px; }
 
 dialog { background: var(--cabeza); color: var(--texto); border: 1px solid var(--borde); border-radius: 18px; width: min(440px, calc(100vw - 32px)); padding: 18px; }

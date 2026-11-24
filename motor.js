@@ -228,9 +228,9 @@ function dist(a, b, max) { // Damerau (OSA) con corte
   return d[a.length][b.length];
 }
 
-function puntajePalabra(t, ws, base) {
+function puntajePalabra(t, ws, base, difuso = true) {
   let m = 0;
-  const tol = t.length >= 7 ? 2 : t.length >= 4 ? 1 : 0;
+  const tol = !difuso ? 0 : t.length >= 7 ? 2 : t.length >= 4 ? 1 : 0;
   for (const w of ws) {
     if (w === t) m = Math.max(m, base);
     else if (w.startsWith(t)) m = Math.max(m, base * 0.8);
@@ -253,6 +253,14 @@ function buscar(q, limite = 20) {
 
   const tokens = palabras(resto);
   const qc = compacto(resto);
+  // Si una palabra aparece tal cual (o como comienzo) en algún producto, no se buscan parecidas:
+  // "corre" encuentra "correa", no "cobre". Solo las palabras que no existen se tratan como error de tipeo.
+  const existe = new Set();
+  for (const p of db.productos) {
+    if (existe.size === tokens.length) break;
+    const ws = [...palabras(p.descripcion), ...palabras(p.codigo), ...palabras(p.proveedor)];
+    for (const tk of tokens) if (!existe.has(tk) && ws.some(w => w.startsWith(tk) || (tk.length >= 3 && w.includes(tk)))) existe.add(tk);
+  }
   const res = [];
   for (const p of db.productos) {
     if (filtroProv && !compacto(p.proveedor).includes(filtroProv)) continue;
@@ -267,7 +275,8 @@ function buscar(q, limite = 20) {
     const porCodigo = s;
     const pd = palabras(p.descripcion), pp = palabras(p.proveedor), pc = palabras(p.codigo);
     for (const tk of tokens) {
-      let m = Math.max(puntajePalabra(tk, pd, 50), puntajePalabra(tk, pc, 45), puntajePalabra(tk, pp, 20));
+      const dif = !existe.has(tk);
+      let m = Math.max(puntajePalabra(tk, pd, 50, dif), puntajePalabra(tk, pc, 45, dif), puntajePalabra(tk, pp, 20, dif));
       if (!m) for (const sin of SINONIMOS[tk] || []) m = Math.max(m, puntajePalabra(sin, pd, 30));
       if (m) { s += m; alguno++; } else todos = false;
     }

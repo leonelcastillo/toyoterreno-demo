@@ -53,10 +53,10 @@ function etiquetaDia(d) {
   return d === h ? 'Hoy' : d === ay ? 'Ayer' : new Date(d + 'T12:00').toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-function htmlTarjeta(p, conCosto = false) {
+function htmlTarjeta(p, conCosto = false, conTotal = true) {
   const c = Number(p.cantidad);
   const cls = c <= 0 ? 'cero' : c <= 2 ? 'poco' : '';
-  const costo = conCosto ? ` · ${dinero(p.costo)} c/u` + (c > 0 ? ` · <span class="vale">${dinero(c * p.costo)}</span>` : '') : '';
+  const costo = conCosto && p.costo != null ? ` · <b class="precio">${dinero(p.costo)}</b> c/u` + (conTotal && c > 0 ? ` · <span class="vale">${dinero(c * p.costo)}</span>` : '') : '';
   return `<span class="desc">${esc(p.descripcion)}</span>
     <span class="linea"><span><span class="codigo">${esc(p.codigo)}</span>${p.proveedor ? ' · ' + esc(p.proveedor) : ''}${costo}</span>
     <span class="quedan ${cls}">${c <= 0 ? 'Agotado' : 'Hay ' + c}</span></span>`;
@@ -74,7 +74,7 @@ function pintar(m) {
   if (m.de === 'bot') h += `<button class="hablar" aria-label="Escuchar">🔊</button>`;
   h += formato(m.texto);
   if (m.productos?.length) {
-    h += '<div class="tarjetas">' + m.productos.map(p => `<button class="tarjeta" data-codigo="${esc(p.codigo)}">${htmlTarjeta(p)}</button>`).join('') + '</div>';
+    h += '<div class="tarjetas">' + m.productos.map(p => `<button class="tarjeta" data-codigo="${esc(p.codigo)}">${htmlTarjeta(p, esAdmin(), false)}</button>`).join('') + '</div>';
   }
   if (m.facturas?.length) {
     h += '<div class="tarjetas">' + m.facturas.map(f => `<div class="factura">🧾 <b>Factura ${esc(f.factura)}</b> · ${esc(f.proveedor || 'sin proveedor')} · ${esc(f.dia)}<ul>${f.items.map(i => `<li>${i.cantidad} × ${esc(i.descripcion)} <span class="codigo">${esc(i.codigo)}</span> a ${dinero(i.costo)}</li>`).join('')}</ul></div>`).join('') + '</div>';
@@ -92,7 +92,7 @@ const porGuardar = [];
 let temporizador = null;
 function decir(de, texto, extra = {}) {
   const m = { id: nuevoId(), de, texto, t: new Date().toISOString(), ...extra };
-  if (m.productos) m.productos = m.productos.map(p => ({ codigo: p.codigo, descripcion: p.descripcion, proveedor: p.proveedor, cantidad: p.cantidad }));
+  if (m.productos) m.productos = m.productos.map(p => ({ codigo: p.codigo, descripcion: p.descripcion, proveedor: p.proveedor, cantidad: p.cantidad, costo: p.costo }));
   pintar({ ...m, propio: true });
   porGuardar.push(m);
   clearTimeout(temporizador);
