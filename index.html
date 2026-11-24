@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#202c33">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Toyo Terreno · Demo</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<!-- ENTRAR -->
+<section id="entrar" class="pantalla" hidden>
+  <form id="form-entrar" autocomplete="on">
+    <img src="logo.png" alt="Toyo Terreno Oriente" class="logo-grande">
+    <label>👤 Usuario
+      <input name="usuario" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+    </label>
+    <label>🔑 Clave
+      <input name="clave" type="password" autocomplete="current-password" required>
+    </label>
+    <button class="btn-grande verde" type="submit">ENTRAR</button>
+    <div style="background:#2a2410;border:1px solid #f3c13a66;border-radius:14px;padding:12px 14px;font-size:16px;line-height:1.45;color:#f5e6b8">
+      <b style="color:#f3c13a">DEMOSTRACIÓN</b> · 1.000 repuestos y 50 proveedores inventados.<br>
+      Entra como <b>jefe</b> (ve los costos) o <b>trabajador</b>. Clave: <b>1234</b>.<br>
+      <small style="color:#c9b98a">Lo que anotes se guarda solo en este navegador. <a href="?reiniciar" style="color:#f3c13a">Empezar de cero</a></small>
+    </div>
+    <p id="error-entrar" class="error" role="alert"></p>
+  </form>
+</section>
+
+<!-- CHAT -->
+<section id="app" class="pantalla" hidden>
+  <header class="cabeza">
+    <img src="logo.png" alt="" class="avatar">
+    <div class="titulo">
+      <b>Toyo Terreno</b>
+      <small id="subtitulo">en línea</small>
+    </div>
+    <button id="b-voz" class="icono" title="Leer en voz alta" aria-label="Leer en voz alta">🔈</button>
+    <button id="b-hoy" class="icono" title="Lo de hoy" aria-label="Lo de hoy">📊</button>
+    <button id="b-inv" class="icono" title="Inventario" aria-label="Inventario">📋</button>
+    <button id="b-salir" class="icono" title="Salir" aria-label="Salir">🚪</button>
+  </header>
+
+  <main id="chat" aria-live="polite"></main>
+
+  <div id="panel"></div>
+
+  <nav id="acciones">
+    <button data-accion="venta"  class="accion verde"><span>🛒</span>VENDÍ</button>
+    <button data-accion="compra" class="accion azul"><span>📦</span>LLEGÓ</button>
+    <button data-accion="buscar" class="accion gris"><span>🔍</span>BUSCAR</button>
+    <button data-accion="nuevo"  class="accion naranja"><span>➕</span>NUEVO</button>
+  </nav>
+
+  <form id="barra">
+    <input id="entrada" placeholder="Escribe aquí…" autocomplete="off" enterkeyhint="send">
+    <button id="b-enviar" type="submit" aria-label="Enviar">➤</button>
+  </form>
+</section>
+
+<!-- INVENTARIO -->
+<section id="inventario" class="pantalla" hidden>
+  <header class="cabeza">
+    <button id="b-volver" class="icono" aria-label="Volver">←</button>
+    <div class="titulo"><b>Inventario</b><small id="inv-resumen"></small></div>
+    <button id="b-csv" class="icono" title="Descargar para Excel" aria-label="Descargar para Excel" hidden>⬇️</button>
+  </header>
+  <div class="inv-filtros">
+    <input id="inv-buscar" type="search" placeholder="🔍 Buscar código, nombre o proveedor">
+    <button id="inv-poco" class="chip">⚠️ Poco</button>
+    <button id="inv-orden" class="chip" hidden>💲 Más valor</button>
+  </div>
+  <div id="inv-lista"></div>
+</section>
+
+<dialog id="editar">
+  <form method="dialog" id="form-editar">
+    <h3 id="ed-titulo"></h3>
+    <label>Descripción <input name="descripcion" required></label>
+    <label>Proveedor <input name="proveedor"></label>
+    <div class="dos">
+      <label>Cantidad <input name="cantidad" type="number" inputmode="numeric" min="0" step="1" required></label>
+      <label>Costo $ <input name="costo" type="number" inputmode="decimal" min="0" step="0.01" required></label>
+    </div>
+    <div class="dos">
+      <button value="cancelar" class="btn-grande gris" formnovalidate>Cancelar</button>
+      <button value="guardar" class="btn-grande verde">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="demo-datos.js"></script>
+<script src="cargador.js"></script>
+<script src="motor.js"></script>
+<script src="servidor-falso.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

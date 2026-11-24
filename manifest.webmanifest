@@ -1,0 +1,16 @@
+{
+  "name": "Toyo Terreno · Inventario (demo)",
+  "short_name": "Toyo Terreno",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b141a",
+  "theme_color": "#202c33",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "782x730",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
