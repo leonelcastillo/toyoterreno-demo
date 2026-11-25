@@ -1,6 +1,6 @@
 // Service Worker ligero para que la app sea instalable en el teléfono (PWA).
 // Estrategia network-first: siempre busca la versión nueva y usa caché solo si no hay red.
-const CACHE = 'toyoterreno-v1';
+const CACHE = 'toyoterreno-v2';
 
 self.addEventListener('install', ev => {
   self.skipWaiting();
