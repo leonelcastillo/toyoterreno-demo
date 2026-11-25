@@ -1,7 +1,8 @@
 // Demo web: guarda la base en este navegador (localStorage). La primera vez usa los datos inventados
 // de demo-datos.js, corridos en el tiempo para que su último día sea hoy.
 (() => {
-  const CLAVE = 'tt-demo-db-v1';
+  const CLAVE = 'tt-demo-db-v2';
+  try { localStorage.removeItem('tt-demo-db-v1'); } catch {}
   try { if (new URLSearchParams(location.search).has('reiniciar')) { localStorage.removeItem(CLAVE); localStorage.removeItem('tt-sesion'); history.replaceState(null, '', location.pathname); } } catch {}
 
   const z = n => String(n).padStart(2, '0');
