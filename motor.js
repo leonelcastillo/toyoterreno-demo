@@ -12,7 +12,8 @@ function hoy(d = new Date()) {
   const z = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
-class ErrorAmable extends Error {} // mensajes que se le muestran tal cual al usuario
+// Mensajes que se le muestran tal cual al usuario. `datos` viaja en la respuesta (p. ej. proveedores parecidos).
+class ErrorAmable extends Error { constructor(msg, datos) { super(msg); this.datos = datos; } }
 
 const codigoOk = c => String(c ?? '').trim().toUpperCase();
 const numero = (v, nombre, { entero = false, min = 0 } = {}) => {
@@ -44,13 +45,69 @@ const proveedores = () => {
   return [...cuenta.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
 };
 
+// ---------- proveedores: un solo nombre por proveedor ----------
+// "Imreca", "IMRECA, C.A.", "imreca ca" son el mismo: la clave quita mayúsculas, tildes, puntos y la forma legal.
+const FORMA_LEGAL = /\b(c\s*\.?\s*a|s\s*\.?\s*a|s\s*\.?\s*r\s*\.?\s*l|c\s*\.?\s*v\s*\.?\s*a|compania anonima|sociedad anonima|f\s*\.?\s*p)\b\.?/g;
+const claveProv = s => quitar(s).replace(FORMA_LEGAL, ' ').replace(/[^a-z0-9]/g, '');
+function seParecen(a, b) {
+  if (!a || !b || a === b) return a === b && !!a;
+  const corto = Math.min(a.length, b.length);
+  const tol = corto >= 8 ? 2 : corto >= 4 ? 1 : 0;
+  if (tol && dist(a, b, tol) <= tol) return true;              // Imreca / Inreca
+  return corto >= 5 && (a.includes(b) || b.includes(a));      // Imreca / Repuestos Imreca
+}
+
+// Qué hacer con un nombre: {nombre, exacto} si ya existe (con el nombre ya guardado), {nombre, parecidos[]} si no.
+function proveedorParecido(nombre) {
+  const limpio = String(nombre ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  if (!limpio) return { nombre: '', exacto: true, parecidos: [] };
+  const k = claveProv(limpio), lista = proveedores();
+  const igual = lista.find(p => claveProv(p) === k);
+  if (igual) return { nombre: igual, exacto: true, parecidos: [] };
+  return { nombre: limpio, exacto: false, parecidos: lista.filter(p => seParecen(claveProv(p), k)).slice(0, 5) };
+}
+
+// El límite: si se parece a uno que ya existe, no se acepta sin confirmar que es otro.
+function proveedorOk(nombre, nuevoConfirmado) {
+  const r = proveedorParecido(nombre);
+  if (r.exacto || !r.parecidos.length || nuevoConfirmado) return r.nombre;
+  throw new ErrorAmable(`"${r.nombre}" se parece a ${r.parecidos.map(p => `"${p}"`).join(', ')}. Usa ese nombre, o confirma que es un proveedor nuevo.`, { parecidos: r.parecidos, nombre: r.nombre });
+}
+
+// Pares que parecen el mismo proveedor (para que el jefe los una).
+function proveedoresRepetidos() {
+  const cuenta = new Map();
+  for (const p of db.productos) if (p.proveedor) cuenta.set(p.proveedor, (cuenta.get(p.proveedor) || 0) + 1);
+  const lista = proveedores(), pares = [];
+  for (let i = 0; i < lista.length; i++) for (let j = i + 1; j < lista.length; j++) {
+    const a = lista[i], b = lista[j];
+    if (!seParecen(claveProv(a), claveProv(b)) && claveProv(a) !== claveProv(b)) continue;
+    const [queda, sale] = (cuenta.get(a) || 0) >= (cuenta.get(b) || 0) ? [a, b] : [b, a];
+    pares.push({ queda, sale, productosQueda: cuenta.get(queda) || 0, productosSale: cuenta.get(sale) || 0 });
+  }
+  return pares;
+}
+
+function unirProveedores(sale, queda, usuario) {
+  sale = String(sale ?? '').trim(); queda = String(queda ?? '').trim();
+  if (!sale || !queda || sale === queda) throw new ErrorAmable('Elige dos proveedores distintos');
+  const lista = proveedores();
+  if (!lista.includes(sale) || !lista.includes(queda)) throw new ErrorAmable('No encontré alguno de los dos proveedores');
+  let productos = 0, movs = 0;
+  for (const p of db.productos) if (p.proveedor === sale) { p.proveedor = queda; productos++; }
+  for (const m of db.movimientos) if (m.proveedor === sale) { m.proveedor = queda; movs++; }
+  mov({ tipo: 'proveedor', de: sale, a: queda, productos, usuario, cantidad: 0, codigo: '', descripcion: `Unir "${sale}" en "${queda}"` });
+  guardar();
+  return { sale, queda, productos, movimientos: movs };
+}
+
 function crearProducto(d, usuario) {
   const codigo = codigoOk(texto(d.codigo, 'el código', 40));
   if (producto(codigo)) throw new ErrorAmable(`Ya existe un producto con el código ${codigo}`);
   const p = {
     codigo,
     descripcion: texto(d.descripcion, 'la descripción'),
-    proveedor: String(d.proveedor ?? '').trim().slice(0, 80),
+    proveedor: proveedorOk(d.proveedor, d.proveedorNuevo),
     cantidad: numero(d.cantidad ?? 0, 'Cantidad', { entero: true }),
     costo: numero(d.costo ?? 0, 'Costo'),
     creado: new Date().toISOString(),
@@ -66,7 +123,7 @@ function editarProducto(c, cambios, usuario) {
   if (!p) throw new ErrorAmable('No existe ese producto');
   const antes = { ...p };
   if (cambios.descripcion !== undefined) p.descripcion = texto(cambios.descripcion, 'la descripción');
-  if (cambios.proveedor !== undefined) p.proveedor = String(cambios.proveedor).trim().slice(0, 80);
+  if (cambios.proveedor !== undefined) p.proveedor = proveedorOk(cambios.proveedor, cambios.proveedorNuevo);
   if (cambios.costo !== undefined) p.costo = numero(cambios.costo, 'Costo');
   if (cambios.cantidad !== undefined) p.cantidad = numero(cambios.cantidad, 'Cantidad', { entero: true });
   const m = mov({ tipo: 'ajuste', codigo: p.codigo, descripcion: p.descripcion, cantidad: p.cantidad - antes.cantidad, antes, usuario });
@@ -90,7 +147,7 @@ function comprar(d, usuario) {
   const items = Array.isArray(d.items) ? d.items : [];
   if (!items.length) throw new ErrorAmable('La factura no tiene productos');
   const factura = String(d.factura ?? '').trim().slice(0, 40) || 'SIN FACTURA';
-  const proveedor = String(d.proveedor ?? '').trim().slice(0, 80);
+  const proveedor = proveedorOk(d.proveedor, d.proveedorNuevo);
   // validar todo antes de tocar nada
   const limpios = items.map((it, i) => {
     const codigo = codigoOk(texto(it.codigo, `el código (línea ${i + 1})`, 40));
@@ -329,5 +386,5 @@ function chatAgregar(usuario, mensajes) {
   return n;
 }
 
-return { hoy, ErrorAmable, producto, productos, proveedores, crearProducto, editarProducto, vender, comprar, deshacer, movimientos, resumen, pocoStock, valorInventario, buscar, chatLeer, chatAgregar };
+return { hoy, ErrorAmable, producto, productos, proveedores, proveedorParecido, proveedoresRepetidos, unirProveedores, crearProducto, editarProducto, vender, comprar, deshacer, movimientos, resumen, pocoStock, valorInventario, buscar, chatLeer, chatAgregar };
 })();

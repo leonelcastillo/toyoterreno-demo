@@ -36,6 +36,7 @@
     }
     if (p === '/api/valor') { soloAdmin(); return resp(200, D.valorInventario()); }
     if (p === '/api/proveedores') return resp(200, D.proveedores());
+    if (p === '/api/proveedor-check') return resp(200, D.proveedorParecido(q('nombre') || ''));
     if (p === '/api/hoy') return resp(200, D.resumen(q('dia') || D.hoy()));
     if (p === '/api/movimientos') return resp(200, D.movimientos({ dia: q('dia'), codigo: q('codigo'), tipo: q('tipo'), limite: 200 }));
     if (p.startsWith('/api/producto/') && m === 'GET') {
@@ -66,7 +67,7 @@
     const token = String(h.Authorization || h.authorization || '').replace(/^Bearer\s+/i, '');
     try { return atender(url, (op.method || 'GET').toUpperCase(), op.body ? JSON.parse(op.body) : {}, token); }
     catch (e) {
-      if (e instanceof D.ErrorAmable) return resp(400, { error: e.message });
+      if (e instanceof D.ErrorAmable) return resp(400, { error: e.message, ...(e.datos || {}) });
       console.error(e);
       return resp(500, { error: 'Algo falló' });
     }

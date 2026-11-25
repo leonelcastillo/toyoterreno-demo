@@ -248,12 +248,40 @@ async function flujoVenta(prod) {
   bot(`✅ ¡Venta anotada!\nQuedan *${q}* de ${prod.descripcion}.` + (q === 0 ? '\n⚠️ Se acabó. Avísale al jefe.' : q <= 2 ? '\n⚠️ Quedan pocos. Avísale al jefe.' : ''), { deshacer: r.movimiento.id });
 }
 
+// Pide el nombre de un proveedor y resuelve conflictos de nombres parecidos.
+// Devuelve { nombre, nuevoConfirmado } listo para mandar al servidor.
+async function pedirProveedor(pregunta, { chips = [] } = {}) {
+  bot(pregunta);
+  while (true) {
+    const nombre = await pedirTexto('Nombre del proveedor…', { chips });
+    // Consultar si hay parecidos antes de intentar guardar
+    let check;
+    try { check = await api('GET', '/api/proveedor-check?nombre=' + enc(nombre)); }
+    catch { check = { exacto: true, nombre }; } // si el endpoint no existe, dejamos pasar
+    if (check.exacto) return { nombre: check.nombre || nombre, nuevoConfirmado: false };
+    if (check.parecidos && check.parecidos.length) {
+      const lista = check.parecidos.map(p => `"${p}"`).join(', ');
+      bot(`⚠️ "${nombre}" se parece a ${lista}.\n¿Es el mismo o es uno distinto?`);
+      const opciones = [
+        ...check.parecidos.map(p => ({ valor: p, texto: p, clase: 'azul' })),
+        { valor: '__nuevo__', texto: '➕ Es uno distinto', clase: 'naranja' },
+      ];
+      const elegido = await elegir(opciones);
+      if (elegido === '__nuevo__') return { nombre, nuevoConfirmado: true };
+      return { nombre: elegido, nuevoConfirmado: false };
+    }
+    return { nombre, nuevoConfirmado: false };
+  }
+}
+
 async function flujoCompra(prodInicial) {
   bot('📦 Vamos a anotar lo que llegó.\n¿Cuál es el *número de la factura*?');
   const f = await pedirTexto('Número de factura…', { chips: [{ valor: '', texto: 'No tiene factura' }] });
   const provs = await api('GET', '/api/proveedores');
-  bot('¿Quién la mandó? (el *proveedor*)');
-  const proveedor = await pedirTexto('Nombre del proveedor…', { chips: provs.slice(0, 6).map(p => ({ valor: p, texto: p })) });
+  const { nombre: proveedor, nuevoConfirmado: proveedorNuevo } = await pedirProveedor(
+    '¿Quién la mandó? (el *proveedor*)',
+    { chips: provs.slice(0, 6).map(p => ({ valor: p, texto: p })) }
+  );
   const items = [];
   let prod = prodInicial;
   while (true) {
@@ -269,7 +297,7 @@ async function flujoCompra(prodInicial) {
   }
   const total = items.reduce((s, i) => s + i.cantidad * i.costo, 0);
   if (!(await confirmar(`Total de la factura: *${dinero(total)}*\n¿Lo guardo?`))) return bot('Listo, no anoté nada. 👍');
-  const r = await api('POST', '/api/compra', { factura: f, proveedor, items });
+  const r = await api('POST', '/api/compra', { factura: f, proveedor, proveedorNuevo, items });
   bot(`✅ ¡Factura anotada!\n` + r.items.map(i => `• ${i.producto.descripcion}: ahora hay *${i.producto.cantidad}*`).join('\n'), { deshacer: r.items[0].movimiento.id });
 }
 
@@ -284,20 +312,23 @@ async function flujoNuevo({ proveedor = '', desdeCompra = false } = {}) {
   } catch (e) { if (e instanceof Cancelado) throw e; }
   bot('¿Cómo se llama? Escribe la *descripción*.\nPor ejemplo: Filtro de aceite Hilux 2.7');
   const descripcion = await pedirTexto('Descripción…');
+  let proveedorNuevo = false;
   if (!proveedor) {
     const provs = await api('GET', '/api/proveedores');
-    bot('¿Quién es el *proveedor*?');
-    proveedor = await pedirTexto('Proveedor…', { chips: [...provs.slice(0, 6).map(p => ({ valor: p, texto: p })), { valor: '', texto: 'No sé' }] });
+    const r = await pedirProveedor('¿Quién es el *proveedor*?', {
+      chips: [...provs.slice(0, 6).map(p => ({ valor: p, texto: p })), { valor: '', texto: 'No sé' }]
+    });
+    proveedor = r.nombre; proveedorNuevo = r.nuevoConfirmado;
   }
   if (desdeCompra) {
-    const r = await api('POST', '/api/productos', { codigo, descripcion, proveedor, cantidad: 0, costo: 0 });
+    const r = await api('POST', '/api/productos', { codigo, descripcion, proveedor, proveedorNuevo, cantidad: 0, costo: 0 });
     bot('✅ Producto creado. Ahora anotamos cuántos llegaron.', { productos: [r.producto] });
     return r.producto;
   }
   const cantidad = await pedirNumero('¿Cuántos hay ahora en la tienda?', { inicial: 1, min: 0 });
   const costo = await pedirDinero('¿Cuánto *costó cada uno*? 💲', 0);
   if (!(await confirmar(`Voy a guardar:\n*${descripcion}*\nCódigo: ${codigo}\nProveedor: ${proveedor || '—'}\nCantidad: ${cantidad}\nCosto: ${dinero(costo)}\n¿Está bien?`))) { bot('Listo, no guardé nada. 👍'); return null; }
-  const r = await api('POST', '/api/productos', { codigo, descripcion, proveedor, cantidad, costo });
+  const r = await api('POST', '/api/productos', { codigo, descripcion, proveedor, proveedorNuevo, cantidad, costo });
   bot('✅ ¡Producto guardado!', { productos: [r.producto] });
   return r.producto;
 }
