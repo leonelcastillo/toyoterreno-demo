@@ -145,8 +145,8 @@ function vender(d, usuario) {
 
 function comprar(d, usuario) {
   const items = Array.isArray(d.items) ? d.items : [];
-  if (!items.length) throw new ErrorAmable('La factura no tiene productos');
-  const factura = String(d.factura ?? '').trim().slice(0, 40) || 'SIN FACTURA';
+  if (!items.length) throw new ErrorAmable('La nota de entrega no tiene productos');
+  const factura = String(d.factura ?? '').trim().slice(0, 40) || 'SIN NÚMERO';
   const proveedor = proveedorOk(d.proveedor, d.proveedorNuevo);
   // validar todo antes de tocar nada
   const limpios = items.map((it, i) => {

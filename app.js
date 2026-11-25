@@ -77,7 +77,7 @@ function pintar(m) {
     h += '<div class="tarjetas">' + m.productos.map(p => `<button class="tarjeta" data-codigo="${esc(p.codigo)}">${htmlTarjeta(p, esAdmin(), false)}</button>`).join('') + '</div>';
   }
   if (m.facturas?.length) {
-    h += '<div class="tarjetas">' + m.facturas.map(f => `<div class="factura">🧾 <b>Factura ${esc(f.factura)}</b> · ${esc(f.proveedor || 'sin proveedor')} · ${esc(f.dia)}<ul>${f.items.map(i => `<li>${i.cantidad} × ${esc(i.descripcion)} <span class="codigo">${esc(i.codigo)}</span> a ${dinero(i.costo)}</li>`).join('')}</ul></div>`).join('') + '</div>';
+    h += '<div class="tarjetas">' + m.facturas.map(f => `<div class="factura">🧾 <b>Nota de entrega ${esc(f.factura)}</b> · ${esc(f.proveedor || 'sin proveedor')} · ${esc(f.dia)}<ul>${f.items.map(i => `<li>${i.cantidad} × ${esc(i.descripcion)} <span class="codigo">${esc(i.codigo)}</span> a ${dinero(i.costo)}</li>`).join('')}</ul></div>`).join('') + '</div>';
   }
   if (m.deshacer) h += `<div class="mini"><button data-deshacer="${m.deshacer}">↩️ Me equivoqué</button></div>`;
   h += `<span class="hora">${t.toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit' })}</span>`;
@@ -275,8 +275,8 @@ async function pedirProveedor(pregunta, { chips = [] } = {}) {
 }
 
 async function flujoCompra(prodInicial) {
-  bot('📦 Vamos a anotar lo que llegó.\n¿Cuál es el *número de la factura*?');
-  const f = await pedirTexto('Número de factura…', { chips: [{ valor: '', texto: 'No tiene factura' }] });
+  bot('📦 Vamos a anotar lo que llegó.\n¿Cuál es el *número de la nota de entrega*?');
+  const f = await pedirTexto('Número de nota de entrega…', { chips: [{ valor: '', texto: 'No tiene nota de entrega' }] });
   const provs = await api('GET', '/api/proveedores');
   const { nombre: proveedor, nuevoConfirmado: proveedorNuevo } = await pedirProveedor(
     '¿Quién la mandó? (el *proveedor*)',
@@ -290,15 +290,15 @@ async function flujoCompra(prodInicial) {
     const costo = await pedirDinero(`¿Cuánto *costó cada uno*? 💲`, prod.costo);
     items.push({ codigo: prod.codigo, descripcion: prod.descripcion, cantidad: n, costo });
     const lista = items.map(i => `• ${i.cantidad} × ${i.descripcion} a ${dinero(i.costo)}`).join('\n');
-    bot(`📝 Factura ${f || '(sin número)'} · ${proveedor}\n${lista}\n\n¿Llegó algo más?`);
+    bot(`📝 Nota de entrega ${f || '(sin número)'} · ${proveedor}\n${lista}\n\n¿Llegó algo más?`);
     const mas = await elegir([{ valor: true, texto: '➕ SÍ, OTRO', clase: 'azul' }, { valor: false, texto: '✅ NO, TERMINAR', clase: 'verde' }]);
     if (!mas) break;
     prod = null;
   }
   const total = items.reduce((s, i) => s + i.cantidad * i.costo, 0);
-  if (!(await confirmar(`Total de la factura: *${dinero(total)}*\n¿Lo guardo?`))) return bot('Listo, no anoté nada. 👍');
+  if (!(await confirmar(`Total de la nota de entrega: *${dinero(total)}*\n¿Lo guardo?`))) return bot('Listo, no anoté nada. 👍');
   const r = await api('POST', '/api/compra', { factura: f, proveedor, proveedorNuevo, items });
-  bot(`✅ ¡Factura anotada!\n` + r.items.map(i => `• ${i.producto.descripcion}: ahora hay *${i.producto.cantidad}*`).join('\n'), { deshacer: r.items[0].movimiento.id });
+  bot(`✅ ¡Nota de entrega anotada!\n` + r.items.map(i => `• ${i.producto.descripcion}: ahora hay *${i.producto.cantidad}*`).join('\n'), { deshacer: r.items[0].movimiento.id });
 }
 
 async function flujoNuevo({ proveedor = '', desdeCompra = false } = {}) {
@@ -336,7 +336,7 @@ async function flujoNuevo({ proveedor = '', desdeCompra = false } = {}) {
 async function buscarYMostrar(q) {
   const res = await api('GET', `/api/buscar?q=${enc(q)}&limite=10`);
   if (!res.productos.length && !res.facturas.length) return bot(`No encontré nada con "${q}" 😕\nPrueba con otra palabra, con el código o con el proveedor.`);
-  let t = res.especial === 'poco' ? `⚠️ Se están acabando (${res.total}):` : res.productos.length ? `🔍 Encontré ${res.total}${res.aproximado ? ' parecidos' : ''}:` : '🔍 Encontré estas facturas:';
+  let t = res.especial === 'poco' ? `⚠️ Se están acabando (${res.total}):` : res.productos.length ? `🔍 Encontré ${res.total}${res.aproximado ? ' parecidos' : ''}:` : '🔍 Encontré estas notas de entrega:';
   if (res.total > 10) t += '\n(Te muestro 10. Escribe más palabras para afinar.)';
   if (res.productos.length) t += '\nToca uno para vender o anotar que llegó.';
   bot(t, { productos: res.productos, facturas: res.facturas });
@@ -374,7 +374,7 @@ async function mostrarHoy() {
   t += r.ventas.length ? r.ventas.map(v => `• ${v.cantidad} × ${v.descripcion}`).join('\n') : '• Nada todavía';
   t += `\n\n📦 Llegó: *${r.piezasCompradas}* piezas\n`;
   t += r.compras.length ? r.compras.map(v => `• ${v.cantidad} × ${v.descripcion}`).join('\n') : '• Nada todavía';
-  if (r.facturas.length) t += '\n\n🧾 Facturas: ' + r.facturas.join(', ');
+  if (r.facturas.length) t += '\n\n🧾 Notas de entrega: ' + r.facturas.join(', ');
   if (esAdmin()) {
     const v = await api('GET', '/api/valor');
     t += `\n\n💲 Costo de lo vendido: ${dinero(r.costoVendido)}\n💲 Costo de lo que llegó: ${dinero(r.costoComprado)}\n\n💰 *El inventario cuesta ${miles(v.valor)}* (${v.piezas} piezas)`;
