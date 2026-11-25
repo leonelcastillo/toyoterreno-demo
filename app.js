@@ -532,6 +532,55 @@ $('#inv-lista').addEventListener('click', async ev => {
 setInterval(() => { if (sesion && !document.hidden && !$('#app').hidden) traerChat(); }, 4000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && sesion) traerChat(); });
 
+// ---------------- instalar como app (PWA) ----------------
+let eventoInstalar = null;
+const yaInstalada = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+const esIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function actualizarBotonesInstalar() {
+  const mostrar = !yaInstalada();
+  const b1 = $('#b-instalar'), b2 = $('#b-instalar-login');
+  if (b1) b1.hidden = !mostrar;
+  if (b2) b2.hidden = !mostrar;
+}
+
+async function instalarApp() {
+  if (eventoInstalar) {
+    eventoInstalar.prompt();
+    try {
+      const r = await eventoInstalar.userChoice;
+      if (r.outcome === 'accepted') { eventoInstalar = null; actualizarBotonesInstalar(); }
+    } catch {}
+    return;
+  }
+  const dlg = $('#dlg-instalar'), txt = $('#txt-instalar');
+  if (esIOS()) {
+    txt.innerHTML = 'En iPhone / iPad:<br>1. Toca el botón <b>Compartir</b> (⬆️) abajo.<br>2. Elige <b>«Agregar a inicio»</b>.<br>3. Toca <b>Agregar</b>.';
+  } else {
+    txt.innerHTML = 'En tu teléfono:<br>1. Toca el menú <b>⋮</b> arriba a la derecha.<br>2. Elige <b>«Instalar app»</b> o <b>«Agregar a pantalla principal»</b>.<br>3. Toca <b>Instalar</b>.';
+  }
+  dlg.showModal();
+}
+
+window.addEventListener('beforeinstallprompt', ev => {
+  ev.preventDefault();
+  eventoInstalar = ev;
+  actualizarBotonesInstalar();
+});
+window.addEventListener('appinstalled', () => {
+  eventoInstalar = null;
+  const b1 = $('#b-instalar'), b2 = $('#b-instalar-login');
+  if (b1) b1.hidden = true;
+  if (b2) b2.hidden = true;
+});
+$('#b-instalar')?.addEventListener('click', instalarApp);
+$('#b-instalar-login')?.addEventListener('click', instalarApp);
+actualizarBotonesInstalar();
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
 pintarVoz();
 (async () => {
   if (!sesion) { $('#entrar').hidden = false; return; }

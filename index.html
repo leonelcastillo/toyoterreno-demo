@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Toyo Terreno · Demo</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="logo.png">
-<link rel="apple-touch-icon" href="logo.png">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
@@ -31,6 +31,7 @@
       Entra como <b>jefe</b> (ve los costos) o <b>trabajador</b>. Clave: <b>1234</b>.<br>
       <small style="color:#c9b98a">Lo que anotes se guarda solo en este navegador. <a href="?reiniciar" style="color:#f3c13a">Empezar de cero</a></small>
     </div>
+    <button id="b-instalar-login" class="btn-grande azul" type="button" hidden>📲 Instalar en el teléfono</button>
     <p id="error-entrar" class="error" role="alert"></p>
   </form>
 </section>
@@ -43,6 +44,7 @@
       <b>Toyo Terreno</b>
       <small id="subtitulo">en línea</small>
     </div>
+    <button id="b-instalar" class="icono" title="Instalar en el teléfono" aria-label="Instalar en el teléfono" hidden>📲</button>
     <button id="b-voz" class="icono" title="Leer en voz alta" aria-label="Leer en voz alta">🔈</button>
     <button id="b-hoy" class="icono" title="Lo de hoy" aria-label="Lo de hoy">📊</button>
     <button id="b-inv" class="icono" title="Inventario" aria-label="Inventario">📋</button>
@@ -94,6 +96,14 @@
       <button value="cancelar" class="btn-grande gris" formnovalidate>Cancelar</button>
       <button value="guardar" class="btn-grande verde">Guardar</button>
     </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-instalar">
+  <form method="dialog">
+    <h3>📲 Instalar en el teléfono</h3>
+    <p id="txt-instalar" style="margin:0;font-size:17px;line-height:1.5;color:var(--texto)"></p>
+    <button value="ok" class="btn-grande verde" style="margin-top:6px">Entendido</button>
   </form>
 </dialog>
 
